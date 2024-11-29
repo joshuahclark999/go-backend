@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // application struct holds the configuration for the application.
@@ -19,17 +22,27 @@ type config struct {
 
 // mount sets up the HTTP routes and returns an HTTP request multiplexer (ServeMux).
 // It registers the health check endpoint.
-func (app *application) mount() *http.ServeMux {
-	mux := http.NewServeMux()
+func (app *application) mount() *chi.Mux {
+	r := chi.NewRouter()
 
-	// Register the health check endpoint with the ServeMux.
-	mux.HandleFunc("GET /v1/health", app.healthCheck)
-	return mux
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	// Set a timeout value on the request context (ctx), that will signal
+  	// through ctx.Done() that the request has timed out and further
+ 	// processing should be stopped.
+ 	r.Use(middleware.Timeout(60 * time.Second))
+	r.Route("/v1", func(r chi.Router) {
+		r.Get("/health", app.healthCheck)
+	})
+
+	return r
 }
 
 // run starts the HTTP server with the provided ServeMux and configuration settings.
 // It sets timeouts for writing, reading, and idle connections.
-func (app *application) run(mux *http.ServeMux) error {
+func (app *application) run(mux *chi.Mux) error {
 
 	srv := &http.Server{
 		Addr:         app.config.addr,  // Server address from the configuration.
