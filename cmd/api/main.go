@@ -1,6 +1,10 @@
 package main
 
-import "log"
+import (
+	"log"
+
+	"github.com/joshuahclark999/go-backend/internal/store"
+)
 
 // main is the entry point for the application. It initializes the configuration,
 // creates an application instance, mounts the routes, and starts the server.
@@ -15,9 +19,13 @@ func main() {
 	cfg := config{
 		addr: ":8080",
 	}
+	store := store.NewStorage(nil)
+
 	app := &application{
 		config: cfg,
+		store:  store,
 	}
+
 	mux := app.mount()
 	log.Fatal(app.run(mux))
 }
